@@ -2,7 +2,6 @@ const User = require("../models/user.Model");
 const sendEmail = require("../utils/SendEmail");
 const sendToken = require("../utils/SendToken");
 const generateOtp = require("../utils/GenreateOtp")
-
 exports.registeruser = async (req, res) => {
     try {
         const { Gender, name, email, PhoneNumber, Password, cPassword } = req.body;
@@ -79,32 +78,41 @@ exports.registeruser = async (req, res) => {
     }
 };
 
-exports.verifyEmail = async (req, res) => {
+exports.verifyEmail  = async (req, res) => {
     try {
         const { type } = req.params;
         const { email, otp, password } = req.body;
 
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ success: false, message: "User not found." });
+        // Check if the account is a user
+        let account = await User.findOne({ email });
+        let accountType = "User";
+
+        // If user not found, check if it's a provider
+        if (!account) {
+            account = await Provider.findOne({ email });
+            accountType = "Provider";
         }
 
-        let userOtp, otpExpiresAt, verificationMessage;
+        if (!account) {
+            return res.status(404).json({ success: false, message: `${accountType} account not found with that email.` });
+        }
 
-        if (type === 'email') {
-            userOtp = user.otp;
-            otpExpiresAt = user.expiresAt;
+        let accountOtp, otpExpiresAt, verificationMessage;
+
+        if (type === 'email' && accountType === "User") {
+            accountOtp = account.otp;
+            otpExpiresAt = account.expiresAt;
             verificationMessage = "Email verified successfully.";
         } else if (type === 'password') {
-            userOtp = user.resetPasswordOtp;
-
-            otpExpiresAt = user.resetPasswordExpiresAt;
+            accountOtp = account.resetPasswordOtp;
+            otpExpiresAt = account.resetPasswordExpiresAt;
             verificationMessage = "OTP verified for password reset.";
         } else {
-            return res.status(400).json({ success: false, message: "Invalid verification type." });
+            return res.status(400).json({ success: false, message: "Invalid verification type or unauthorized email verification for providers." });
         }
 
-        if (userOtp !== otp) {
+    
+        if (accountOtp !== otp) {
             return res.status(400).json({ success: false, message: "Invalid OTP." });
         }
 
@@ -113,23 +121,24 @@ exports.verifyEmail = async (req, res) => {
         }
 
         if (type === 'email') {
-            user.isVerified = true;
-            user.otp = null;
-            user.expiresAt = null;
+            account.isVerified = true;
+            account.otp = null;
+            account.expiresAt = null;
         } else if (type === 'password') {
-            user.Password = password;
-            user.resetPasswordOtp = null;
-            user.resetPasswordExpiresAt = null;
+            account.Password = password;
+            account.resetPasswordOtp = null;
+            account.resetPasswordExpiresAt = null;
         }
 
-        await user.save();
-        await sendToken(user, res, 201, verificationMessage);
+        await account.save();
 
+        return res.status(200).json({ success: true, message: verificationMessage });
     } catch (error) {
         console.error("Error during verification:", error);
         return res.status(500).json({ success: false, message: "An error occurred during verification." });
     }
 };
+
 
 exports.resendOtp = async (req, res) => {
     try {
@@ -140,38 +149,45 @@ exports.resendOtp = async (req, res) => {
             return res.status(400).json({ success: false, message: "Please provide an email." });
         }
 
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(404).json({ success: false, message: "User not found." });
+        let account = await User.findOne({ email });
+        let accountType = "User";
+
+        if (!account) {
+            account = await Provider.findOne({ email });
+            accountType = "Provider";
         }
 
-        const { otp, expiresAt } = generateOtp(6, 120000); // Generate a new OTP valid for 2 minutes
+        if (!account) {
+            return res.status(404).json({ success: false, message: `${accountType} account not found with that email.` });
+        }
+
+        const { otp, expiresAt } = generateOtp(6, 120000);
         let emailContent;
 
         if (type === 'email') {
-            if (user.isVerified) {
+            if (account.isVerified) {
                 return res.status(400).json({ success: false, message: "Email is already verified." });
             }
-            user.otp = otp;
-            user.expiresAt = expiresAt;
+            account.otp = otp;
+            account.expiresAt = expiresAt;
 
             emailContent = {
                 email: email,
                 subject: "Verify Your Email Address",
-                message: `Hello ${user.name},\n\n` +
+                message: `Hello ${account.name},\n\n` +
                     `Please verify your email address using the OTP below:\n\n` +
                     `OTP: ${otp}\n` +
                     `This OTP is valid for 2 minutes (expires at: ${new Date(expiresAt).toISOString()}).\n\n` +
                     `Thank you for joining us!`,
             };
         } else if (type === 'password') {
-            user.resetPasswordOtp = otp;
-            user.resetPasswordExpiresAt = expiresAt;
+            account.resetPasswordOtp = otp;
+            account.resetPasswordExpiresAt = expiresAt;
 
             emailContent = {
                 email: email,
                 subject: "Password Reset Verification OTP",
-                message: `Hello ${user.name},\n\n` +
+                message: `Hello ${account.name},\n\n` +
                     `You requested to reset your password. Use the OTP below to verify your request:\n\n` +
                     `OTP: ${otp}\n` +
                     `This OTP is valid for 2 minutes (expires at: ${new Date(expiresAt).toISOString()}).\n\n` +
@@ -181,16 +197,18 @@ exports.resendOtp = async (req, res) => {
             return res.status(400).json({ success: false, message: "Invalid resend type." });
         }
 
-        await sendEmail(emailContent); // Send the email
-        await user.save(); // Save the updated OTP and expiration
+        // Send the email and save the updated OTP and expiration
+        await sendEmail(emailContent);
+        await account.save();
 
-        res.status(200).json({ success: true, message: "A new OTP has been sent to your email." });
+        return res.status(200).json({ success: true, message: `A new OTP has been sent to your email.` });
 
     } catch (error) {
         console.error("Error during OTP resend:", error);
-        res.status(500).json({ success: false, message: "An error occurred while resending OTP. Please try again later." });
+        return res.status(500).json({ success: false, message: "An error occurred while resending OTP. Please try again later." });
     }
 };
+
 
 exports.updateProfile = async (req, res) => {
     try {
@@ -231,33 +249,51 @@ exports.updateProfile = async (req, res) => {
 
 exports.login = async (req, res) => {
     try {
-        const { email, password } = req.body;
+        const { any, password } = req.body;
 
-        if (!email || !password) {
-            return res.status(400).json({ success: false, message: "Please provide both your email and password." });
+        if (!any || !password) {
+            return res.status(400).json({ success: false, message: "Please provide both your email/phone number and password." });
         }
 
-        const user = await User.findOne({ email });
+        // First, try finding the user in the User collection
+        let user = await User.findOne({
+            $or: [{ email: any }, { PhoneNumber: any }]
+        });
+
+        let isProvider = false;
+
+        // If not found in User, try finding the provider in the Provider collection
+        if (!user) {
+            user = await Provider.findOne({
+                $or: [{ 'profileData.email': any }, { PhoneNumber: any }]
+            });
+            isProvider = true; // Flag to indicate a provider login
+        }
 
         if (!user) {
-            return res.status(404).json({ success: false, message: "No account found with that email." });
+            return res.status(404).json({
+                success: false,
+                message: `No account found with that email/phone number${isProvider ? " for provider" : " for user"}.`
+            });
         }
 
+        // Check if the password matches
         const isMatch = await user.comparePassword(password);
         if (!isMatch) {
             return res.status(400).json({ success: false, message: "The password you entered is incorrect. Please try again." });
         }
 
+        // If the user's email is not verified
         if (!user.isVerified) {
             const { otp, expiresAt } = generateOtp(6, 120000);
             user.otp = otp;
             user.expiresAt = expiresAt;
 
             const emailContent = {
-                email: email,
+                email: user.email || user.profileData.email,
                 subject: "Verify Your Email Address",
                 message: `Hello,\n\n` +
-                    `It seems your email address is not verified yet. we need you to verify your email address. Please use the OTP below:\n\n` +
+                    `It seems your email address is not verified yet. We need you to verify your email address. Please use the OTP below:\n\n` +
                     `OTP: ${otp}\n` +
                     `This OTP is valid for 2 minutes (expires at: ${new Date(expiresAt).toISOString()}).\n\n` +
                     `Thank you for being with us! Please verify your email address and enjoy our services.\n`,
@@ -265,14 +301,22 @@ exports.login = async (req, res) => {
 
             await sendEmail(emailContent);
             await user.save();
-            return res.status(200).json({ success: true, message: "We've sent you a verification email. Please check your inbox!" });
+            return res.status(200).json({
+                success: true,
+                message: "We've sent you a verification email. Please check your inbox!"
+            });
         }
 
+        // If the user or provider is banned
         if (user.isBanned) {
-            return res.status(403).json({ success: false, message: "Your account has been banned. Please contact our support team." });
+            return res.status(403).json({
+                success: false,
+                message: `Your ${isProvider ? "provider" : "user"} account has been banned. Please contact our support team.`
+            });
         }
 
-        await sendToken(user, res, 200, "Login successful! Welcome back!");
+        // Send token and login success message
+        await sendToken(user, res, 200, `Login successful! Welcome back, ${isProvider ? "Provider" : "User"}!`);
     } catch (error) {
         console.error("Login error:", error);
         return res.status(500).json({ success: false, message: "An error occurred during login. Please try again later." });
@@ -300,9 +344,20 @@ exports.forgotPassword = async (req, res) => {
             return res.status(400).json({ success: false, message: "Please provide your email address." });
         }
 
-        const user = await User.findOne({ email });
+        let user = await User.findOne({ email });
+        let isProvider = false;
+
         if (!user) {
-            return res.status(404).json({ success: false, message: "No account found with that email address." });
+            user = await Provider.findOne({ 'profileData.email': email });
+            isProvider = true;
+        }
+
+      
+        if (!user) {
+            return res.status(404).json({
+                success: false,
+                message: `No account found with that email address${isProvider ? " for provider" : " for user"}.`
+            });
         }
 
         const { otp, expiresAt } = generateOtp(6, 120000);
@@ -313,7 +368,7 @@ exports.forgotPassword = async (req, res) => {
             email: email,
             subject: "Password Reset Request",
             message: `Hello,\n\n` +
-                `We received a request to reset the password for your account. Please use the OTP below to proceed with your password reset:\n\n` +
+                `We received a request to reset the password for your ${isProvider ? "provider" : "user"} account. Please use the OTP below to proceed with your password reset:\n\n` +
                 `OTP: ${otp}\n` +
                 `This OTP is valid for 2 minutes (expires at: ${new Date(expiresAt).toISOString()}).\n\n` +
                 `To complete the reset, please visit the following link:\n` +
@@ -330,10 +385,12 @@ exports.forgotPassword = async (req, res) => {
         });
     } catch (error) {
         console.error("Forgot password error:", error);
-        return res.status(500).json({ success: false, message: "An error occurred during the password reset process. Please try again later." });
+        return res.status(500).json({
+            success: false,
+            message: "An error occurred during the password reset process. Please try again later."
+        });
     }
 };
-
 
 
 //==============Admin Works ==================//
