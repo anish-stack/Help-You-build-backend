@@ -1,6 +1,6 @@
 const PortfolioModel = require("../models/Portfolio.model");
 const providersModel = require("../models/providers.model");
-const { UploadMultipleImages, UploaViaFeildNameImages } = require("../utils/Cloudnary");
+const {  UploaViaFeildNameImages } = require("../utils/Cloudnary");
 const sendEmail = require("../utils/SendEmail");
 const sendToken = require("../utils/SendToken");
 const Cloudinary = require('cloudinary').v2;
@@ -190,7 +190,6 @@ exports.addPortfolio = async (req, res) => {
     try {
         const { TextWhichYouShow, type, ProviderId } = req.body;
 
-        // Validate required fields
         if (!TextWhichYouShow || !ProviderId || !type) {
             return res.status(400).json({
                 success: false,
@@ -308,6 +307,64 @@ exports.addPortfolio = async (req, res) => {
     }
 };
 
+
+exports.updateProfileDetails = async (req, res) => {
+    try {
+        const providerId = req.user.id._id;
+
+        // Check if providerId exists
+        if (!providerId) {
+            return res.status(401).json({
+                success: false,
+                message: "Unauthorized to access this endpoint."
+            });
+        }
+
+        // Fetch the current provider details from the database
+        const existingProvider = await providersModel.findById(providerId);
+
+        if (!existingProvider) {
+            return res.status(404).json({
+                success: false,
+                message: "Provider not found."
+            });
+        }
+
+        // Prepare the fields to be updated with only the changed fields
+        const updatedFields = {};
+        Object.keys(req.body).forEach(field => {
+            if (req.body[field] !== existingProvider[field]) {
+                updatedFields[field] = req.body[field];
+            }
+        });
+
+        // If no fields are actually updated, return a message
+        if (Object.keys(updatedFields).length === 0) {
+            return res.status(200).json({
+                success: true,
+                message: "No changes detected."
+            });
+        }
+
+        // Update only the changed fields in the database
+        const updatedProvider = await providersModel.findByIdAndUpdate(providerId, updatedFields, { new: true });
+
+        // Return success response with updated provider details
+        return res.status(200).json({
+            success: true,
+            message: "Profile updated successfully.",
+            data: updatedProvider
+        });
+    } catch (error) {
+        console.error("Error updating profile:", error);
+        return res.status(500).json({
+            success: false,
+            message: "An error occurred while updating the profile."
+        });
+    }
+};
+
+
 exports.GetAllProvider = async (req, res) => {
     try {
         const { type } = req.query;
@@ -340,16 +397,13 @@ exports.GetAllProvider = async (req, res) => {
     }
 };
 
-
-
-// Utility function to upload a file to Cloudinary
 const uploadToCloudinary = (fileBuffer) => {
     return new Promise((resolve, reject) => {
         const stream = Cloudinary.uploader.upload_stream(
             { folder: process.env.CLOUDINARY_FOLDER_NAME },
             (error, result) => {
                 if (result) {
-                    // console.log(result)
+                    
                     resolve({ public_id: result.public_id, imageUrl: result.secure_url });
                 } else {
                     reject(error || new Error("Failed to upload image"));

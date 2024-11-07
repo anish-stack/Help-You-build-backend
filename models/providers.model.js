@@ -2,11 +2,11 @@ const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
 const ProfileData = new mongoose.Schema({
-    email:{
+    email: {
         type: String,
         required: true,
         unique: true,
-    
+
     },
     age: {
         type: Number,
@@ -109,6 +109,10 @@ const ProviderSchema = new mongoose.Schema({
         min: 0,
         default: 0,
         max: 5
+    },
+    role: {
+        type: String,
+        default: 'provider'
     },
     isProfileComplete: {
         type: Boolean,
