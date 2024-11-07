@@ -2,9 +2,10 @@ const User = require("../models/user.Model");
 const sendEmail = require("../utils/SendEmail");
 const sendToken = require("../utils/SendToken");
 const generateOtp = require("../utils/GenreateOtp")
+
 exports.registeruser = async (req, res) => {
     try {
-        const { Gender, name, email, PhoneNumber, Password } = req.body;
+        const { Gender, name, email, PhoneNumber, Password, cPassword } = req.body;
         const errors = [];
 
         if (!name) errors.push("Please enter a name");
@@ -55,6 +56,7 @@ exports.registeruser = async (req, res) => {
             ProfileImage: image,
             PhoneNumber,
             Password,
+            cPassword,
         });
 
         const emailContent = {

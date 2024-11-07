@@ -6,6 +6,7 @@ const { UploadViaFieldName, handleMulterErrors } = require('../middlewares/Multe
 
 const router = express.Router();
 
+
 //User registration related routes
 router.post('/register', registeruser);
 router.put('/user/update-profile', protect, updateProfile);

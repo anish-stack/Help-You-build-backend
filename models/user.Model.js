@@ -25,6 +25,11 @@ const userSchema = new mongoose.Schema({
         type: String,
         required: true,
     },
+    cPassword: {
+        type: String,
+        required: true,
+    },
+    
     ProfileImage: {
         type: String,
         default: 'https://ui-avatars.com/api/?background=random&name=user'
