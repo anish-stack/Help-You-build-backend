@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Provider Registration</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<style>
+    body {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    font-family: Arial, sans-serif;
+}
+
+.form-container {
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+h2 {
+    text-align: center;
+}
+
+label {
+    display: block;
+    margin: 10px 0 5px;
+    font-weight: bold;
+}
+
+input[type="text"],
+input[type="email"],
+input[type="password"],
+input[type="number"],
+input[type="tel"],
+input[type="file"],
+button {
+    width: 100%;
+    padding: 10px;
+    margin-bottom: 10px;
+    border-radius: 4px;
+    border: 1px solid #ccc;
+}
+
+button {
+    background-color: #4CAF50;
+    color: white;
+    border: none;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+button:hover {
+    background-color: #45a049;
+}
+
+</style>
+    <div class="form-container">
+        <h2>Provider Registration</h2>
+        <form id="providerForm" enctype="multipart/form-data">
+            <!-- Provider Info -->
+            <label for="type">Type</label>
+            <input type="text" id="type" name="type" required>
+
+            <label for="name">Name</label>
+            <input type="text" id="name" name="name" required>
+
+            <label for="email">Email</label>
+            <input type="email" id="email" name="email" required>
+
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+
+            <label for="age">Age</label>
+            <input type="number" id="age" name="age" required>
+
+            <label for="language">Language</label>
+            <input type="text" id="language" name="language" required>
+
+            <label for="mobileNumber">Mobile Number</label>
+            <input type="tel" id="mobileNumber" name="mobileNumber" required>
+
+            <label for="gstDetails">GST Details (Optional)</label>
+            <input type="text" id="gstDetails" name="gstDetails">
+
+            <label for="coaNumber">COA Number</label>
+            <input type="text" id="coaNumber" name="coaNumber" required>
+
+            <label for="expertiseSpecialization">Expertise/Specialization</label>
+            <input type="text" id="expertiseSpecialization" name="expertiseSpecialization" required>
+
+            <label for="location">Location</label>
+            <input type="text" id="location" name="location" required>
+
+            <!-- Document Uploads -->
+            <label for="adhaarCard">Adhaar Card (Both Sides)</label>
+            <input type="file" id="adhaarCard" name="adhaarCard" accept="image/*" required>
+
+            <label for="panCard">Pan Card</label>
+            <input type="file" id="panCard" name="panCard" accept="image/*" required>
+
+            <label for="qualificationProof">Qualification Proof</label>
+            <input type="file" id="qualificationProof" name="qualificationProof" accept="image/*" required>
+
+            <!-- Submit Button -->
+            <button type="submit">Register Provider</button>
+        </form>
+        <div id="responseMessage"></div>
+    </div>
+
+    <!-- Axios and JavaScript -->
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+   
+    <script>
+        document.getElementById("providerForm").addEventListener("submit", async (e) => {
+    e.preventDefault();
+
+    // Get form data
+    const formData = new FormData();
+    formData.append("type", document.getElementById("type").value);
+    formData.append("name", document.getElementById("name").value);
+    formData.append("email", document.getElementById("email").value);
+    formData.append("password", document.getElementById("password").value);
+    formData.append("age", document.getElementById("age").value);
+    formData.append("language", document.getElementById("language").value);
+    formData.append("mobileNumber", document.getElementById("mobileNumber").value);
+    formData.append("gstDetails", document.getElementById("gstDetails").value);
+    formData.append("coaNumber", document.getElementById("coaNumber").value);
+    formData.append("expertiseSpecialization", document.getElementById("expertiseSpecialization").value);
+    formData.append("location", document.getElementById("location").value);
+
+    // Append files to form data
+    formData.append("adhaarCard", document.getElementById("adhaarCard").files[0]);
+    formData.append("panCard", document.getElementById("panCard").files[0]);
+    formData.append("qualificationProof", document.getElementById("qualificationProof").files[0]);
+
+    try {
+        const response = await axios.post("http://localhost:5000/api/v1/register-provider", formData, {
+            headers: { "Content-Type": "multipart/form-data" }
+        });
+        
+        document.getElementById("responseMessage").textContent = response.data.message;
+    } catch (error) {
+        document.getElementById("responseMessage").textContent = 
+            error.response ? error.response.data.message : "An error occurred.";
+    }
+});
+
+    </script>
+</body>
+</html>

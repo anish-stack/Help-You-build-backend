@@ -14,6 +14,7 @@ const handleMulterErrors = (req, res, next) => {
 
 
 const UploadViaFieldName = (fields) => {
+  console.log(fields)
   const fieldConfigs = fields.map(field => ({ name: field }));
   return upload.fields(fieldConfigs); 
 };

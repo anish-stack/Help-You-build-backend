@@ -72,7 +72,7 @@ exports.registeruser = async (req, res) => {
         await sendEmail(emailContent);
         await newUser.save();
 
-        res.status(201).json({ success: true, message: "User registered successfully! Please check your email for verification." });
+        res.status(201).json({ success: true,data:newUser.expiresAt, message: "User registered successfully! Please check your email for verification." });
     } catch (error) {
         console.error("Registration error:", error);
         res.status(500).json({ success: false, message: "Internal server error" });
@@ -251,7 +251,7 @@ exports.updateProfile = async (req, res) => {
 exports.login = async (req, res) => {
     try {
         const { any, password } = req.body;
-
+        console.log(req.body)
         if (!any || !password) {
             return res.status(400).json({ success: false, message: "Please provide both your email/phone number and password." });
         }
@@ -266,7 +266,7 @@ exports.login = async (req, res) => {
         // If not found in User, try finding the provider in the Provider collection
         if (!user) {
             user = await Provider.findOne({
-                $or: [{ 'profileData.email': any }, { PhoneNumber: any }]
+                $or: [{ email: any }, { mobileNumber: any }]
             });
             isProvider = true; // Flag to indicate a provider login
         }
@@ -285,28 +285,28 @@ exports.login = async (req, res) => {
         }
 
         // If the user's email is not verified
-        if (!user.isVerified) {
-            const { otp, expiresAt } = generateOtp(6, 120000);
-            user.otp = otp;
-            user.expiresAt = expiresAt;
+        // if (!user.isVerified) {
+        //     const { otp, expiresAt } = generateOtp(6, 120000);
+        //     user.otp = otp;
+        //     user.expiresAt = expiresAt;
 
-            const emailContent = {
-                email: user.email || user.profileData.email,
-                subject: "Verify Your Email Address",
-                message: `Hello,\n\n` +
-                    `It seems your email address is not verified yet. We need you to verify your email address. Please use the OTP below:\n\n` +
-                    `OTP: ${otp}\n` +
-                    `This OTP is valid for 2 minutes (expires at: ${new Date(expiresAt).toISOString()}).\n\n` +
-                    `Thank you for being with us! Please verify your email address and enjoy our services.\n`,
-            };
+        //     const emailContent = {
+        //         email: user.email || user.profileData.email,
+        //         subject: "Verify Your Email Address",
+        //         message: `Hello,\n\n` +
+        //             `It seems your email address is not verified yet. We need you to verify your email address. Please use the OTP below:\n\n` +
+        //             `OTP: ${otp}\n` +
+        //             `This OTP is valid for 2 minutes (expires at: ${new Date(expiresAt).toISOString()}).\n\n` +
+        //             `Thank you for being with us! Please verify your email address and enjoy our services.\n`,
+        //     };
 
-            await sendEmail(emailContent);
-            await user.save();
-            return res.status(200).json({
-                success: true,
-                message: "We've sent you a verification email. Please check your inbox!"
-            });
-        }
+        //     await sendEmail(emailContent);
+        //     await user.save();
+        //     return res.status(200).json({
+        //         success: true,
+        //         message: "We've sent you a verification email. Please check your inbox!"
+        //     });
+        // }
 
         // If the user or provider is banned
         if (user.isBanned) {
@@ -349,7 +349,7 @@ exports.forgotPassword = async (req, res) => {
         let isProvider = false;
 
         if (!user) {
-            user = await Provider.findOne({ 'profileData.email': email });
+            user = await Provider.findOne(email );
             isProvider = true;
         }
 

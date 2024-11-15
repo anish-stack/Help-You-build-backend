@@ -1,142 +1,127 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcrypt');
 
-const ProfileData = new mongoose.Schema({
-    email: {
+const ProviderProfileSchema = new mongoose.Schema({
+    name: {
+        type: String,
+        required: true,
+        trim: true
+    },
+    email:{
         type: String,
         required: true,
         unique: true,
-
-    },
-    age: {
-        type: Number,
-    },
-    ProfileImage: {
-        url: {
-            type: String,
-        },
-        cloudinary_id: {
-            type: String,
-        }
-    },
-    gender: {
-        type: String,
-        enum: ['Mr', 'Mrs'],
-        default: 'Mr'
-    },
-    nationality: {
-        type: String
-    },
-    occupation: {
-        type: String
-    },
-    education: {
-        type: String
-    },
-    experience: {
-        type: String
-    },
-    Bio: {
-        type: String
-    },
-    DocumentOne: {
-        type: String
-    },
-    DocumentTwo: {
-        type: String
-    },
-    isDocumentVerified: {
-        type: Boolean,
-        default: false
-    },
-    DocumentVerifiedDate: {
-        type: Date
-    },
-    DocumentRejectReson: {
-        type: String
-    },
-    DocumentRejectDate: {
-        type: Date
-    },
-})
-
-
-
-const ProviderSchema = new mongoose.Schema({
-    first_name: {
-        type: String,
-        required: true
-    },
-    last_name: {
-        type: String,
-        required: true
-    },
-    type: {
-        type: String,
-        enum: ["Architect", "Interior", "Vastu"],
-        required: true
-    },
-    Bio: {
-        type: String
-    },
-    phone_number: {
-        type: String,
-        required: true
-    },
-    address: {
-        type: String
-    },
-    isBanned: {
-        type: Boolean,
-        default: false
-    },
-    MemberType: {
-        type: String,
-        enum: ['Free', 'Premium'],
-        default: 'Free'
     },
     password: {
         type: String,
         required: true
     },
-    profileData: ProfileData,
-    reviews: [{
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Review'
-    }],
-    rating: {
+    photo: {
+        imageUrl: {
+            type: String
+        },
+        public_id: String
+    },
+    age: {
         type: Number,
-        min: 0,
-        default: 0,
-        max: 5
+        min: 0
+    },
+    DOB:{
+        type: Date
+    },
+    language: {
+        type: [String],
+        default: []
+    },
+    mobileNumber: {
+        type: String,
+    },
+
+    adhaarCard: {
+        imageUrl: {
+            type: String
+        },
+        public_id: String
+    },
+    panCard: {
+        imageUrl: {
+            type: String
+        },
+        public_id: String
+    },
+    gstDetails: {
+        type: String,
+        default: null
+    },
+    coaNumber: {
+        type: String
+    },
+    qualificationProof: {
+        imageUrl: {
+            type: String
+        },
+        public_id: String
+    },
+    portfolio: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Portfolio'
+    },
+    expertiseSpecialization: {
+        type: [],
+        default: []
+    },
+    gallery: [
+        {
+            imageUrl: {
+                type: String
+            },
+            public_id: String
+        }
+    ],
+    location: {
+        type: String
     },
     role: {
         type: String,
         default: 'provider'
     },
+    reviews: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Review'
+    }],
+    type: {
+        type: String,
+        enum: ["Architect", "Interior", "Vastu"],
+        required: true
+    },
+    isBanned: {
+        type: Boolean,
+        default: false
+    },
     isProfileComplete: {
         type: Boolean,
         default: false
     },
-    portfolio: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'Portfolio'
-    }
-}, { timestamps: true });
-
-ProviderSchema.pre('save', async function (next) {
-    if (!this.isModified('password')) return next();
-    try {
-        const salt = await bcrypt.genSalt(10);
-        this.password = await bcrypt.hash(this.password, salt);
-        next();
-    } catch (error) {
-        next(error);
+    resetPasswordOtp:{
+        type: String,
+    },
+    resetPasswordExpiresAt:{
+        type: Date,
     }
 });
 
-ProviderSchema.methods.comparePassword = async function (candidatePassword) {
-    return await bcrypt.compare(candidatePassword, this.password);
-}
+// Password hashing
+ProviderProfileSchema.pre('save', async function (next) {
+    if (this.isModified('password')) {
+        const salt = await bcrypt.genSalt(10);
+        this.password = await bcrypt.hash(this.password, salt);
+    }
+    next();
+});
 
-module.exports = mongoose.model('Provider', ProviderSchema);
+// Method to check password validity
+ProviderProfileSchema.methods.comparePassword = async function (password) {
+    return await bcrypt.compare(password, this.password);
+};
+
+module.exports = mongoose.model('Provider', ProviderProfileSchema);
