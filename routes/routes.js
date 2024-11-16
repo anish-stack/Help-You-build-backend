@@ -1,9 +1,11 @@
 const express = require('express');
 const { registeruser, getAllUsers, getSingleUserById, updateProfile, login, logout, deleteAccount, banUserToggle, verifyEmail, resendOtp, forgotPassword } = require('../controllers/user.Controller');
 const { protect } = require('../middlewares/Protect');
-const { RegisterProvider, AddProfileDetails, addPortfolio, GetAllProvider } = require('../controllers/provider.controller');
+const { CreateProvider, GetMyProfile, addPortfolio } = require('../controllers/provider.controller');
 const { UploadViaFieldName, handleMulterErrors } = require('../middlewares/Multer');
-
+const multer = require('multer');
+const storage = multer.memoryStorage();
+const upload = multer({ storage });
 const router = express.Router();
 
 
@@ -17,10 +19,50 @@ router.post('/resend-otp/:type', resendOtp);
 router.post('/forgot-password', forgotPassword);
 
 //providers registration related routes
-router.post('/register-provider', RegisterProvider);
-router.post('/add-profile/:provider', handleMulterErrors, UploadViaFieldName(['DocumentOne', 'DocumentTwo']), AddProfileDetails);
-router.post('/add-portfolio', handleMulterErrors, UploadViaFieldName(['PortfolioLink', 'GalleryImages']), addPortfolio);
-router.get('/get-providers', GetAllProvider);
+router.post(
+    '/register-provider',
+    (req, res, next) => {
+        upload.fields([
+            { name: 'adhaarCard', maxCount: 2 },
+            { name: 'panCard', maxCount: 1 },
+            { name: 'qualificationProof', maxCount: 1 },
+            { name: 'photo', maxCount: 1 }
+
+        ])(req, res, (err) => {
+            if (err) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'File upload error',
+                    error: err.message
+                });
+            }
+            next();
+        });
+    },
+    CreateProvider
+);
+
+router.get('/GetMyProfile',protect,GetMyProfile)
+router.post('/addPortfolio',protect, (req, res, next) => {
+    upload.fields([
+        { name: 'PortfolioLink', maxCount: 1 },
+        { name: 'GalleryImages', maxCount: 10 },
+  
+
+    ])(req, res, (err) => {
+        if (err) {
+            return res.status(400).json({
+                success: false,
+                message: 'File upload error',
+                error: err.message
+            });
+        }
+        next();
+    });
+},addPortfolio)
+
+
+
 
 
 
