@@ -103,10 +103,12 @@ exports.CreateProvider = async (req, res) => {
 exports.GetMyProfile = async (req, res) => {
     try {
         const userId = req.user.id._id;
+        console.log(req.user.id)
         if (!userId) {
             return res.status(401).json({ message: 'Please login To Access Your Dashboard ' });
         }
         const provider = await providersModel.findById(userId).populate('portfolio');
+        console.log(provider)
         if (!provider) {
             return res.status(404).json({ message: 'Provider not found' });
         }
