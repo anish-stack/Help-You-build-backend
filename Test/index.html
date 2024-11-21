@@ -141,7 +141,7 @@ button:hover {
     formData.append("qualificationProof", document.getElementById("qualificationProof").files[0]);
 
     try {
-        const response = await axios.post("http://localhost:5000/api/v1/register-provider", formData, {
+        const response = await axios.post("https://api.helpubuild.co.in/api/v1/register-provider", formData, {
             headers: { "Content-Type": "multipart/form-data" }
         });
         
